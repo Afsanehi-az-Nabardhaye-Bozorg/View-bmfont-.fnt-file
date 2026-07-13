@@ -64,12 +64,6 @@ jobs:
             pyinstaller --onefile --windowed --name "ViewBmfontFnt" --add-data "*.py;." main.py
           }
 
-      - name: Create ZIP package (without folder)
-        shell: powershell
-        run: |
-          # فایل EXE را مستقیماً در ریشه ZIP قرار می‌دهیم
-          Compress-Archive -Path "dist/ViewBmfontFnt.exe" -DestinationPath "ViewBmfontFnt-windows.zip" -Force
-
       - name: Get tag name
         id: get_tag
         shell: bash
@@ -85,7 +79,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ViewBmfontFnt-windows.zip
+          files: dist/ViewBmfontFnt.exe
           tag_name: ${{ steps.get_tag.outputs.tag_name }}
           name: Release ${{ steps.get_tag.outputs.tag_name }}
           draft: false
