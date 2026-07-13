@@ -48,15 +48,29 @@ jobs:
           # اگر فایل requirements.txt دارید، از این خط استفاده کنید:
           # pip install -r requirements.txt
 
+      - name: Download icon file
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Afsanehi-az-Nabardhaye-Bozorg/View-bmfont-.fnt-file/main/Image/View-bmfont-.fnt-file-icon.ico" -OutFile "app_icon.ico"
+          if (Test-Path "app_icon.ico") {
+            Write-Host "Icon downloaded successfully"
+          } else {
+            Write-Host "Icon download failed, continuing without icon"
+          }
+
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name "BMFontViewer" --add-data "*.py;." main.py
+          if (Test-Path "app_icon.ico") {
+            pyinstaller --onefile --windowed --name "ViewBmfontFnt" --icon "app_icon.ico" --add-data "*.py;." main.py
+          } else {
+            pyinstaller --onefile --windowed --name "ViewBmfontFnt" --add-data "*.py;." main.py
+          }
 
       - name: Prepare release files
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path "release" | Out-Null
-          Copy-Item "dist/BMFontViewer.exe" "release/" -Force
+          Copy-Item "dist/ViewBmfontFnt.exe" "release/" -Force
           # اگر فایل README یا مستندات دارید، کپی کنید:
           # Copy-Item "README.md" "release/" -Force
           # Copy-Item "LICENSE" "release/" -Force
@@ -64,7 +78,7 @@ jobs:
       - name: Create ZIP package
         shell: powershell
         run: |
-          Compress-Archive -Path "release/*" -DestinationPath "BMFontViewer-windows.zip" -Force
+          Compress-Archive -Path "release/*" -DestinationPath "ViewBmfontFnt-windows.zip" -Force
 
       - name: Get tag name
         id: get_tag
@@ -81,7 +95,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: BMFontViewer-windows.zip
+          files: ViewBmfontFnt-windows.zip
           tag_name: ${{ steps.get_tag.outputs.tag_name }}
           name: Release ${{ steps.get_tag.outputs.tag_name }}
           draft: false
