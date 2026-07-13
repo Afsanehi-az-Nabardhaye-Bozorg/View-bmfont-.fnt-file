@@ -2,12 +2,22 @@ name: Python Release Build
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'نام تگ (مثلاً v1.0.0) - در صورت خالی بودن، از تگ push استفاده می‌شود'
+        required: false
+        type: string
   push:
     tags:
       - 'v*'
 
 permissions:
   contents: write
+  actions: read
+
+env:
+  # برای رفع هشدار Node 20 (اختیاری)
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   build:
@@ -23,33 +33,57 @@ jobs:
           python-version: '3.10'
           architecture: 'x86'
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install PyQt5 Pillow
+          pip install PyQt5 Pillow pyinstaller
+          # اگر فایل requirements.txt دارید، از این خط استفاده کنید:
+          # pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
         run: |
-          pip install pyinstaller
-          pyinstaller --onefile --windowed --name "BMFontViewer" main.py
+          pyinstaller --onefile --windowed --name "BMFontViewer" --add-data "*.py;." main.py
 
       - name: Prepare release files
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path "release" | Out-Null
           Copy-Item "dist/BMFontViewer.exe" "release/" -Force
-          # اگر فایل README یا مستندات دارید، کپی کنید
+          # اگر فایل README یا مستندات دارید، کپی کنید:
           # Copy-Item "README.md" "release/" -Force
+          # Copy-Item "LICENSE" "release/" -Force
 
       - name: Create ZIP package
         shell: powershell
         run: |
           Compress-Archive -Path "release/*" -DestinationPath "BMFontViewer-windows.zip" -Force
 
+      - name: Get tag name
+        id: get_tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.tag_name }}" != "" ]; then
+            echo "tag_name=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: BMFontViewer-windows.zip
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          name: Release ${{ steps.get_tag.outputs.tag_name }}
           draft: false
           prerelease: false
           generate_release_notes: true
